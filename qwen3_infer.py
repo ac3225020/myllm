@@ -36,10 +36,19 @@ def qwen3_inference(model_path, test_question, max_new_tokens=4096):
         **inputs,
         streamer=streamer,
         max_new_tokens=max_new_tokens,
-        temperature=0.7,
-        top_p=0.9,
+        # ========== 核心：解决重复的关键参数 ==========
+        repetition_penalty=1.1,  # 重复惩罚（1.0=无惩罚，建议1.05-1.2）
+        no_repeat_ngram_size=3,  # 禁止3个token的连续重复（可选，强化去重）
+        # ========== 优化采样参数（减少重复） ==========
+        temperature=0.6,  # 降低随机性（原0.7，建议0.5-0.7）
+        top_p=0.85,  # 核采样（原0.9，建议0.8-0.9）
+        top_k=50,  # 仅从概率前50的token中采样（新增，限制采样范围）
         do_sample=True,
+        # ========== 基础参数（补全） ==========
         pad_token_id=tokenizer.eos_token_id,
+        eos_token_id=tokenizer.eos_token_id,
+        num_beams=1,  # 贪心/采样模式（固定为1，避免冲突）
+        early_stopping=True,  # 生成到eos_token时停止（避免无意义重复）
     )
 
 
