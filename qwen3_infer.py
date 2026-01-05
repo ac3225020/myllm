@@ -16,6 +16,7 @@ def qwen3_inference(model_path, test_question, max_new_tokens=512):
         max_seq_length=2048,
         dtype=torch.float16,
         load_in_4bit=True,
+        local_files_only=True,
     )
 
     # 推理模式
