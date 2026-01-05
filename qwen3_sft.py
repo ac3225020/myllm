@@ -77,10 +77,10 @@ train_dataset = train_dataset.map(
 
 # ====================== 4. 配置微调参数（核心：防过拟合+适配小模型） ======================
 training_args = TrainingArguments(
-    per_device_train_batch_size=4,
+    per_device_train_batch_size=16,
     learning_rate=1e-4,  # 核心修正：从2e-4→1e-4（小模型降低学习率）
     num_train_epochs=1,  # 核心修正：从3→1（避免小模型过度训练）
-    logging_steps=100,  # 修正：从1→100，减少冗余日志输出
+    logging_steps=50,  # 修正：从1→100，减少冗余日志输出
     logging_dir="/root/sft/logs",
     output_dir="/root/sft/unsloth-finetuned-model",
     report_to="wandb",  # 保留W&B上报
