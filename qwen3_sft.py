@@ -24,14 +24,14 @@ LOCAL_MODEL_PATH = "/root/autodl-tmp/Qwen3-0.6B"
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name=LOCAL_MODEL_PATH,
     local_files_only=True,
-    torch_dtype="float16",
+    dtype="float16",
     load_in_4bit=True,  # 节省显存
 )
 
 # 应用Chat模板（以Qwen3为例）
 tokenizer = get_chat_template(
     tokenizer,
-    chat_template="qwen",
+    chat_template="qwen-2.5",
     mapping={"role": "from", "content": "value", "user": "user", "assistant": "assistant"},
 )
 
