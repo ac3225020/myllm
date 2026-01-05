@@ -44,14 +44,14 @@ train_dataset = load_dataset("json", data_files=DATASET_PATH, split="train")
 def format_data(examples):
     # 将数据转换为Qwen3对话格式
     texts = []
-    for i in range(len(examples['conversations'])):
-        # 将conversations转换为标准对话格式
-        conversations = examples['conversations'][i]
+    for i in range(len(examples['messages'])):
+        # 将messages转换为标准对话格式
+        messages = examples['messages'][i]
         formatted_convs = []
-        for conv in conversations:
+        for msg in messages:
             formatted_convs.append({
-                "from": conv.get("from", conv.get("role", "user")),
-                "value": conv.get("value", conv.get("content", ""))
+                "from": msg.get("role", "user"),
+                "value": msg.get("content", "")
             })
         # 应用chat模板
         text = tokenizer.apply_chat_template(formatted_convs, tokenize=False)
