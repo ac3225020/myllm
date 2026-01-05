@@ -1,0 +1,29 @@
+# Python缓存
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Conda环境
+unsloth_qwen/
+env/
+venv/
+.idea
+
+# 模型文件（体积大，不上传！）
+qwen3-0.6b-finetuned/
+qwen3-0.6b-finetuned-merged/
+*.bin
+*.safetensors
+
+# 日志/缓存
+qwen3_train_logs/
+*.log
+.Trash/
+
+# 数据集（若体积大也不上传，可备注路径）
+qwen3_finetune.jsonl  # 若数据集小可删除这行，保留则上传
+
+# 系统文件
+.DS_Store
+Thumbs.db
