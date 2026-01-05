@@ -3,7 +3,7 @@ from unsloth import FastLanguageModel
 from transformers import TextStreamer
 
 
-def qwen3_inference(model_path, test_question, max_new_tokens=512):
+def qwen3_inference(model_path, test_question, max_new_tokens=4096):
     """
     Qwen3-0.6B最简推理函数（仅测试单个模型）
     :param model_path: 微调后模型路径
@@ -13,7 +13,7 @@ def qwen3_inference(model_path, test_question, max_new_tokens=512):
     # 加载模型和tokenizer
     model, tokenizer = FastLanguageModel.from_pretrained(
         model_name=model_path,
-        max_seq_length=2048,
+        max_seq_length=4096,
         dtype=torch.float16,
         load_in_4bit=True,
         local_files_only=True,
