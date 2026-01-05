@@ -1,6 +1,6 @@
 import os
 import wandb
-from datasets import load_from_disk
+from datasets import load_dataset
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
@@ -36,9 +36,9 @@ tokenizer = get_chat_template(
 )
 
 # ====================== 3. 准备微调数据 ======================
-# 从本地加载标准Qwen3格式的数据集
+# 从本地加载JSONL格式的数据集
 DATASET_PATH = "/root/dataset/qwen3_finetune.jsonl"
-train_dataset = load_from_disk(DATASET_PATH)
+train_dataset = load_dataset("json", data_files=DATASET_PATH, split="train")
 
 # 格式化数据函数
 def format_data(examples):
