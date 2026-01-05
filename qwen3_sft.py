@@ -35,6 +35,20 @@ tokenizer = get_chat_template(
     mapping={"role": "from", "content": "value", "user": "user", "assistant": "assistant"},
 )
 
+# ====================== 2.5 配置LoRA适配器（量化模型必须） ======================
+model = FastLanguageModel.get_peft_model(
+    model,
+    r=16,  # LoRA rank，越大参数越多，效果越好但显存占用也越大
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],  # 要训练的模块
+    lora_alpha=16,  # LoRA alpha，通常与r相同
+    lora_dropout=0,  # dropout率
+    bias="none",  # bias设置
+    use_gradient_checkpointing="unsloth",  # 梯度检查点，节省显存
+    random_state=3407,
+    use_rslora=False,  # 使用RSLoRA
+    loftq_config=None,  # LoftQ配置
+)
+
 # ====================== 3. 准备微调数据 ======================
 # 从本地加载JSONL格式的数据集
 DATASET_PATH = "/root/dataset/qwen3_finetune.jsonl"
@@ -84,7 +98,7 @@ trainer = SFTTrainer(
     tokenizer=tokenizer,
     train_dataset=train_dataset,
     args=training_args,
-    max_seq_length=2048,
+    max_seq_length=20480,
     dataset_text_field="text",
 )
 
