@@ -41,7 +41,7 @@ tokenizer = get_chat_template(
 model = FastLanguageModel.get_peft_model(
     model,
     r=8,  # 降低LoRA秩，减少可训练参数的表达能力
-    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    target_modules=["q", "k", "v", "o", "gate_proj", "up_proj", "down_proj"],
     lora_alpha=16,
     lora_dropout=0.2,  # 提升dropout到0.2，强化随机丢弃
     bias="none",
@@ -92,7 +92,7 @@ training_args = TrainingArguments(
     lr_scheduler_type="cosine",
     warmup_steps=2000,  # 延长预热步数，避免前期更新过快
     # 新增：早停（loss归零前停止）
-    evaluation_strategy="steps",  # 每步评估验证集
+    eval_strategy="steps",  # 每步评估验证集
     eval_steps=500,  # 每500步评估一次，监控泛化能力
     # 基础配置
     fp16=True,
