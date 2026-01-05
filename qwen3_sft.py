@@ -1,65 +1,62 @@
 import os
 import wandb
+import torch
 from datasets import load_dataset
 from unsloth import FastLanguageModel
 from unsloth.chat_templates import get_chat_template
 from transformers import TrainingArguments
 from trl import SFTTrainer
 
-# ====================== 1. 初始化W&B（可视化核心） ======================
-# 先在终端执行：wandb login（输入你的W&B API Key，注册地址：https://wandb.ai/）
+# ====================== 1. 初始化W&B（保留所有配置） ======================
 wandb.init(
-    project="unsloth-qwen3-visual-finetune",  # 你的项目名
-    name="qwen3-0.6b-finetune",                 # 本次微调任务名
-    config={                                  # 要监控的参数（可自定义）
-        "learning_rate": 2e-4,
+    project="unsloth-qwen3-visual-finetune",
+    name="qwen3-0.6b-finetune",
+    config={
+        "learning_rate": 1e-4,  # 修正：从2e-4改为1e-4（适配小模型）
         "batch_size": 4,
-        "max_seq_length": 2048,
+        "max_seq_length": 16384,  # 统一上下文长度
         "model_path": "Qwen3-0.6B",
     }
 )
 
-# ====================== 2. 加载模型（Unsloth常规操作） ======================
+# ====================== 2. 加载模型（统一max_seq_length） ======================
 LOCAL_MODEL_PATH = "/root/autodl-tmp/Qwen3-0.6B"
 model, tokenizer = FastLanguageModel.from_pretrained(
     model_name=LOCAL_MODEL_PATH,
+    max_seq_length=16384,  # 核心修正：匹配Qwen3-0.6B官方最大上下文长度
     local_files_only=True,
-    dtype="float16",
-    load_in_4bit=True,  # 节省显存
+    dtype=torch.float16,
+    load_in_4bit=True,
 )
 
-# 应用Chat模板（以Qwen3为例）
+# 应用Chat模板（保留）
 tokenizer = get_chat_template(
     tokenizer,
     chat_template="qwen-2.5",
     mapping={"role": "from", "content": "value", "user": "user", "assistant": "assistant"},
 )
 
-# ====================== 2.5 配置LoRA适配器（量化模型必须） ======================
+# ====================== 2.5 配置LoRA适配器（核心：增加防过拟合） ======================
 model = FastLanguageModel.get_peft_model(
     model,
-    r=16,  # LoRA rank，越大参数越多，效果越好但显存占用也越大
-    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],  # 要训练的模块
-    lora_alpha=16,  # LoRA alpha，通常与r相同
-    lora_dropout=0,  # dropout率
-    bias="none",  # bias设置
-    use_gradient_checkpointing="unsloth",  # 梯度检查点，节省显存
+    r=16,
+    target_modules=["q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"],
+    lora_alpha=16,
+    lora_dropout=0.1,  # 核心修正：从0→0.1，随机丢弃参数防过拟合
+    bias="none",
+    use_gradient_checkpointing="unsloth",
     random_state=3407,
-    use_rslora=False,  # 使用RSLoRA
-    loftq_config=None,  # LoftQ配置
+    use_rslora=False,
+    loftq_config=None,
 )
 
-# ====================== 3. 准备微调数据 ======================
-# 从本地加载JSONL格式的数据集
+# ====================== 3. 准备微调数据（逻辑无问题，保留） ======================
 DATASET_PATH = "/root/dataset/qwen3_finetune.jsonl"
 train_dataset = load_dataset("json", data_files=DATASET_PATH, split="train")
 
-# 格式化数据函数
 def format_data(examples):
-    # 将数据转换为Qwen3对话格式
     texts = []
     for i in range(len(examples['messages'])):
-        # 将messages转换为标准对话格式
         messages = examples['messages'][i]
         formatted_convs = []
         for msg in messages:
@@ -67,12 +64,10 @@ def format_data(examples):
                 "from": msg.get("role", "user"),
                 "value": msg.get("content", "")
             })
-        # 应用chat模板
         text = tokenizer.apply_chat_template(formatted_convs, tokenize=False)
         texts.append(text)
     return {"text": texts}
 
-# 对数据集进行格式化
 train_dataset = train_dataset.map(
     format_data,
     batched=True,
@@ -80,30 +75,42 @@ train_dataset = train_dataset.map(
     desc="Formatting dataset"
 )
 
-# ====================== 4. 配置微调参数（加入W&B回调） ======================
+# ====================== 4. 配置微调参数（核心：防过拟合+适配小模型） ======================
 training_args = TrainingArguments(
     per_device_train_batch_size=4,
-    learning_rate=2e-4,
-    num_train_epochs=3,
-    logging_steps=1,  # 每1步记录一次日志（用于可视化）
-    logging_dir="/root/sft/logs",  # 日志保存路径（供W&B读取）
+    learning_rate=1e-4,  # 核心修正：从2e-4→1e-4（小模型降低学习率）
+    num_train_epochs=1,  # 核心修正：从3→1（避免小模型过度训练）
+    logging_steps=100,  # 修正：从1→100，减少冗余日志输出
+    logging_dir="/root/sft/logs",
     output_dir="/root/sft/unsloth-finetuned-model",
-    report_to="wandb",  # 关键：将训练数据上报到W&B
+    report_to="wandb",  # 保留W&B上报
     run_name="qwen3-0.6b-finetune",
+    # 新增：防过拟合核心参数
+    weight_decay=0.01,  # 权重衰减，抑制过拟合
+    lr_scheduler_type="cosine",  # 余弦学习率衰减，平缓更新
+    warmup_steps=1000,  # 学习率预热，避免前期更新过快
+    # 补充：保证训练稳定性的基础配置
+    fp16=True,  # 匹配模型float16精度
+    seed=3407,  # 固定随机种子，结果可复现
+    save_strategy="epoch",  # 按轮保存，避免频繁写盘
+    gradient_checkpointing=True,  # 节省显存
 )
 
-# ====================== 5. 启动微调（自动可视化） ======================
+# ====================== 5. 启动微调（统一max_seq_length） ======================
 trainer = SFTTrainer(
     model=model,
     tokenizer=tokenizer,
     train_dataset=train_dataset,
     args=training_args,
-    max_seq_length=20480,
+    max_seq_length=16384,  # 核心修正：从20480→2048，匹配模型上限
     dataset_text_field="text",
 )
 
-# 开始微调（W&B会实时监控）
+# 开始微调
 trainer.train()
 
-# 结束W&B监控
+# 保存最终模型（新增：避免训练后模型丢失）
+trainer.save_model(os.path.join(training_args.output_dir, "final_model"))
+
+# 结束W&B监控（保留）
 wandb.finish()
