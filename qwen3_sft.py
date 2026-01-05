@@ -92,8 +92,6 @@ training_args = TrainingArguments(
     lr_scheduler_type="cosine",
     warmup_steps=2000,  # 延长预热步数，避免前期更新过快
     # 新增：早停（loss归零前停止）
-    early_stopping_patience=3,
-    early_stopping_threshold=0.01,
     evaluation_strategy="steps",  # 每步评估验证集
     eval_steps=500,  # 每500步评估一次，监控泛化能力
     # 基础配置
