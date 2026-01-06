@@ -70,7 +70,8 @@ def format_data(examples):
                 "from": msg.get("role", "user"),
                 "value": msg.get("content", "")
             })
-        text = tokenizer.apply_chat_template(formatted_convs, tokenize=False)
+        text = tokenizer.apply_chat_template(formatted_convs, tokenize=False,enable_thinking=False)
+        texts.append(text)
         texts.append(text)
     return {"text": texts}
 
